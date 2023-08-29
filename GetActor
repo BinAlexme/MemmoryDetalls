@@ -1,0 +1,73 @@
+class CActorSystem {
+public:
+
+    CActor* GetActor(EntityId entityId) {
+
+        std::uintptr_t m_actors = kmemory::read< std::uintptr_t >((uintptr_t)this + 0x30);
+        std::uintptr_t m_actors_buffer = kmemory::read< std::uintptr_t >(m_actors);
+
+        std::uintptr_t parent = kmemory::read< std::uintptr_t >(m_actors + 0x8);
+
+        while (!kmemory::read< char >(parent + 0x19)) {
+
+            if (kmemory::read< EntityId >(parent + 0x20) >= entityId) {
+                m_actors_buffer = parent;
+                parent = kmemory::read< std::uintptr_t >(parent);
+            }
+            else {
+                parent = kmemory::read< std::uintptr_t >(parent + 0x10);
+            }
+        }
+
+        if (m_actors_buffer == m_actors || entityId < kmemory::read< int >(m_actors_buffer + 0x20)) {
+            m_actors_buffer = m_actors;
+        }
+
+        return m_actors_buffer == m_actors ? nullptr : kmemory::read< CActor* >(m_actors_buffer + 0x28);
+    }
+
+    CActor* GetActor(EntityId entityId, std::map< EntityId, CActor* >& map) {
+
+        auto pActor = map.find(entityId)->second;
+        return pActor != nullptr ? pActor : nullptr;
+    }
+
+    void CreateActorMap(std::map< EntityId, CActor* >& map) {
+
+        std::uintptr_t it = 0;
+
+        auto m_actors = kmemory::read< std::uintptr_t >((uintptr_t)this + 0x30);
+        auto m_actors_buffer = kmemory::read< std::uintptr_t >(m_actors);
+
+        while (m_actors != m_actors_buffer) {
+
+            map.insert({ kmemory::read< EntityId >(m_actors_buffer + 0x20), kmemory::read< CActor* >(m_actors_buffer + 0x28) });
+
+            auto m_parent = kmemory::read< std::uintptr_t >(m_actors_buffer + 0x10);
+            if (kmemory::read< std::uint8_t >(m_parent + 0x19)) {
+
+                for (it = kmemory::read< std::uintptr_t >(m_actors_buffer + 0x8);
+                    !kmemory::read< std::uint8_t >(it + 0x19);
+                    it = kmemory::read< std::uintptr_t >(it + 0x8)) {
+
+                    if (m_actors_buffer != kmemory::read< std::uintptr_t >(it + 0x10)) {
+                        break;
+                    }
+
+                    m_actors_buffer = it;
+                }
+
+                m_actors_buffer = it;
+            }
+            else {
+
+                m_actors_buffer = kmemory::read< std::uintptr_t >(m_actors_buffer + 0x10);
+                for (auto i = kmemory::read<std::uintptr_t>(m_parent);
+                    !kmemory::read< std::uint8_t >(i + 0x19);
+                    i = kmemory::read< std::uintptr_t >(i)) {
+                    m_actors_buffer = i;
+                }
+            }
+        }
+    }
+};
