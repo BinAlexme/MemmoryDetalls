@@ -15,6 +15,10 @@ def main():
         return
     client = pymem.process.module_from_name(pm.process_handle, "client.dll").lpBaseOfDll
 
+    while True:
+        if not GetWindowText(GetForegroundWindow()) == "Counter-Strike: Global Offensive":
+            continue
+
         if keyboard.is_pressed("space"):
             force_jump = client + dwForceJump
             player = pm.read_int(client + dwLocalPlayer)
